@@ -21,8 +21,7 @@
 float accelX, accelY, accelZ;
 
 long gyroXCalli = 0, gyroYCalli = 0, gyroZCalli = 0;
-long gyroXPresent = 0, gyroYPresent = 0, gyroZPresent = 0;
-long gyroXPast = 0, gyroYPast = 0, gyroZPast = 0;
+long gyroX = 0, gyroY = 0, gyroZ = 0;
 float rotX, rotY, rotZ;
 
 float angelX = 0, angelY = 0, angelZ = 0;
@@ -32,9 +31,6 @@ float pidAngleXI = 0;
 float prevAngleXError = 0;
 
 float pidAngleX = 0, pidAngleY = 0;
-
-long timePast = 0;
-long timePresent = 0;
 
 unsigned long loopTimer;
 
@@ -48,10 +44,8 @@ void updateMotorSpeed();
 void print();
 
 void setup() {
-	// Initiate
 	Serial.begin(57600);
 	setUpMPU();
-	// calibrate
 	angularDataCalibration();
 	delay(2000);
 	loopTimer = micros();  
@@ -82,9 +76,9 @@ void angularDataCalibration() {
 	long x = 0, y = 0, z = 0;
     for (int i = 0; i < CALIBRATION_ITERATIONS; i++) {
       	getGyroValues();
-      	x = x + gyroXPresent;
-      	y = y + gyroYPresent;
-      	z = z + gyroZPresent;
+      	x = x + gyroX;
+      	y = y + gyroY;
+      	z = z + gyroZ;
 		delay(1);
     }
     gyroXCalli = x / CALIBRATION_ITERATIONS;
@@ -127,20 +121,12 @@ void accelData() {
 }
 
 void angularData() {
-  	gyroXPast = gyroXPresent;
-  	gyroYPast = gyroYPresent;
-  	gyroZPast = gyroZPresent;
-  	timePast = timePresent;
-  	timePresent = millis();
-
   	getGyroValues();
-  	// angelX = angelX + ((timePresent - timePast)*(gyroXPresent + gyroXPast)) * 0.00000382; // angel around X axis
-  	// angelY = angelY + ((timePresent - timePast)*(gyroYPresent + gyroYPast)) * 0.00000382;
-  	// angelZ = angelZ + ((timePresent - timePast)*(gyroZPresent + gyroZPast)) * 0.00000382;
 
-	angelX = angelX + gyroXPresent * 0.000031; // 0.000031
-	angelY = angelY + gyroYPresent * 0.000031; // 0.000031
-	angelZ = angelZ + gyroZPresent * 0.000031; // 0.000031
+	// TODO: Do this multiplying when the data is reading
+	angelX = angelX + gyroX * 0.000031; // = 1 / (131*250)
+	angelY = angelY + gyroY * 0.000031;
+	angelZ = angelZ + gyroZ * 0.000031;
 
 	long accelTot = sqrt((accelX * accelX) + (accelY * accelY) + (accelZ * accelZ));
 
@@ -153,8 +139,7 @@ void angularData() {
 		angleYaccel = asin((float)accelX / accelTot) * -57.296;
 	}
 
-	// angelX = angelX * 0.9996 + angleXaccel * 0.0004; // Too small coefficients (like 0.0004) will not work
-	// angelY = angelY * 0.9996 + angleYaccel * 0.0004;
+	// Too small coefficients (like 0.9996 and 0.0004) will not work
 	angelX = angelX * 0.9 + angleXaccel * 0.1;
 	angelY = angelY * 0.9 + angleYaccel * 0.1;
 }
@@ -165,9 +150,9 @@ void getGyroValues() {
   	Wire.endTransmission();
   	Wire.requestFrom(0b1101000, 6);                             // Request for 6 bytes from gyro registers (43 - 48)
   	while(Wire.available() < 6);                                // Wait untill all 6 bytes are available
-  	gyroXPresent = (Wire.read()<<8 | Wire.read()) - gyroXCalli;                  
-  	gyroYPresent = (Wire.read()<<8 | Wire.read()) - gyroYCalli;                 
-  	gyroZPresent = (Wire.read()<<8 | Wire.read()) - gyroZCalli;                
+  	gyroX = (Wire.read()<<8 | Wire.read()) - gyroXCalli;                  
+  	gyroY = (Wire.read()<<8 | Wire.read()) - gyroYCalli;                 
+  	gyroZ = (Wire.read()<<8 | Wire.read()) - gyroZCalli;                
 }
 
 void PID() {
